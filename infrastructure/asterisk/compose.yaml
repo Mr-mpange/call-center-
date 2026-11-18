@@ -1,0 +1,71 @@
+services:
+  asterisk:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    # sip.js (0.21.x) rejects SIP hostnames that start with a digit, and
+    # Asterisk builds its From/Contact domain from the container hostname.
+    # Docker's default container IDs are hex strings that often start with a
+    # digit (e.g. "6d0350b337a4"), which made the browser softphone drop every
+    # inbound INVITE with "error parsing header 'From'". A fixed hostname
+    # keeps the dialog headers parseable by any RFC-compliant SIP stack.
+    hostname: asterisk
+    ports:
+      - "127.0.0.1:5060:5060/udp"
+      - "127.0.0.1:5060:5060/tcp"
+      - "127.0.0.1:8089:8089/tcp"
+      - "127.0.0.1:10000-10100:10000-10100/udp"
+    volumes:
+      - ./config:/opt/asterisk-config:ro
+      - ./runtime:/etc/asterisk/runtime
+      - asterisk-logs:/var/log/asterisk
+      - asterisk-data:/var/lib/asterisk
+    healthcheck:
+      test: ["CMD-SHELL", "asterisk -rx 'core show uptime' >/dev/null 2>&1 && asterisk -rx 'module show like res_pjsip' | grep -q Running"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  sipp:
+    image: ctaloi/sipp:latest@sha256:c459f2340443ddcc159227efc798217dbdaad0dbe88b76b78b1a876aa271986a
+    profiles: [test]
+    env_file: .env
+    depends_on:
+      asterisk:
+        condition: service_healthy
+    entrypoint: ["sipp"]
+    command: ["-sn", "uac", "-s", "5551000", "asterisk:5060", "-m", "1", "-trace_err"]
+
+  sipp-to-browser:
+    image: ctaloi/sipp:latest@sha256:c459f2340443ddcc159227efc798217dbdaad0dbe88b76b78b1a876aa271986a
+    profiles: [test]
+    depends_on:
+      asterisk:
+        condition: service_healthy
+    entrypoint: ["sipp"]
+    command: ["-sn", "uac", "-s", "5551002", "asterisk:5060", "-m", "1", "-trace_err", "-timeout", "35s"]
+
+  sipp-tenant:
+    image: ctaloi/sipp:latest@sha256:c459f2340443ddcc159227efc798217dbdaad0dbe88b76b78b1a876aa271986a
+    profiles: [test]
+    depends_on:
+      asterisk:
+        condition: service_healthy
+    entrypoint: ["sipp"]
+    # Local SIP caller for the end-to-end tenant DID test. The backend maps
+    # 5551001 to a tenant-owned E.164 DID via ASTERISK_TEST_DID_ALIASES. The
+    # scenario supplies an E.164 From header, the way a real trunk would.
+    volumes:
+      - ../../test/e2e:/sipp-scenarios:ro
+    command: ["-sn", "uac", "-s", "5551001", "asterisk:5060", "-m", "1", "-rtp_echo", "-mp", "6004", "-d", "20000", "-trace_err", "-timeout", "45s"]
+
+volumes:
+  asterisk-logs:
+  asterisk-data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24

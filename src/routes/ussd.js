@@ -21,7 +21,7 @@ router.post(['/', '/callback'], async (req, res) => {
   const reply = (body) => res.type('text/plain').send(body);
 
   if (s.length === 0) {
-    return reply("CON Africa's Talking Sandbox\n1. Send demo SMS\n2. Buy airtime\n0. Exit");
+    return reply("CON Africa's Talking\n1. Send SMS\n2. Buy airtime\n0. Exit");
   }
 
   if (s[0] === '0') {

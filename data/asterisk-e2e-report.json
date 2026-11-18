@@ -1,0 +1,331 @@
+{
+  "startedAt": "2026-11-11T10:28:33.093Z",
+  "checks": [
+    {
+      "name": "Asterisk container is healthy",
+      "ok": true,
+      "detail": "healthy"
+    },
+    {
+      "name": "ARI controller connected",
+      "ok": true,
+      "detail": "GET /health reports mediaGateway.controller.ari.connected"
+    },
+    {
+      "name": "SIP identity provisioned for A",
+      "ok": true,
+      "detail": "mpange_c10a5d66ab820c926fd95eee"
+    },
+    {
+      "name": "SIP identity provisioned for B",
+      "ok": true,
+      "detail": "mpange_3956ca0721dca811facccf2a"
+    },
+    {
+      "name": "SIP identity provisioned for C",
+      "ok": true,
+      "detail": "mpange_6a40f9750947fea9680eafdd"
+    },
+    {
+      "name": "per-agent endpoints written to the Asterisk runtime include",
+      "ok": true,
+      "detail": "mpange_c10a5d66ab820c926fd95eee,mpange_3956ca0721dca811facccf2a,mpange_6a40f9750947fea9680eafdd"
+    },
+    {
+      "name": "Asterisk can read the generated agent endpoints",
+      "ok": true,
+      "detail": {
+        "readable": "readable",
+        "ownership": "root:root:600"
+      }
+    },
+    {
+      "name": "Browser SIP registration",
+      "ok": true,
+      "detail": "mpange_c10a5d66ab820c926fd95eee=online, mpange_3956ca0721dca811facccf2a=online, mpange_6a40f9750947fea9680eafdd=online"
+    },
+    {
+      "name": "call-1-agent-hangup: all three agents ring",
+      "ok": true,
+      "detail": "A,B,C"
+    },
+    {
+      "name": "call-1-agent-hangup: inbound session created for DID +255699920003",
+      "ok": true,
+      "detail": "ari-1794392924.16"
+    },
+    {
+      "name": "call-1-agent-hangup: winning agent UI is connected",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "call-1-agent-hangup: agent B stopped ringing",
+      "ok": true,
+      "detail": "B"
+    },
+    {
+      "name": "call-1-agent-hangup: agent C stopped ringing",
+      "ok": true,
+      "detail": "C"
+    },
+    {
+      "name": "call status is connected",
+      "ok": true,
+      "detail": "connected"
+    },
+    {
+      "name": "media verified timestamp recorded",
+      "ok": true,
+      "detail": "2026-11-11T10:28:51.229Z"
+    },
+    {
+      "name": "browser reported inbound RTP bytes",
+      "ok": true,
+      "detail": 2880
+    },
+    {
+      "name": "browser reported outbound RTP bytes",
+      "ok": true,
+      "detail": 2880
+    },
+    {
+      "name": "gateway bridge id assigned",
+      "ok": true,
+      "detail": "mpange-bridge-0044fdd3fbe3339ef80c22fb"
+    },
+    {
+      "name": "caller channel id assigned",
+      "ok": true,
+      "detail": "1794392924.16"
+    },
+    {
+      "name": "agent channel id assigned",
+      "ok": true,
+      "detail": "mpange-agent-1974c04d1397d784e808a947"
+    },
+    {
+      "name": "ARI bridge contains caller and agent channels",
+      "ok": true,
+      "detail": [
+        "1794392924.16",
+        "mpange-agent-1974c04d1397d784e808a947"
+      ]
+    },
+    {
+      "name": "Asterisk CLI reports bidirectional RTP on the agent channel",
+      "ok": true,
+      "detail": {
+        "rx": 49,
+        "tx": 49,
+        "channel": "mpange_c10a5d66ab8",
+        "codec": "ulaw"
+      }
+    },
+    {
+      "name": "call-1-agent-hangup: verified two-way media (browser RTP + Asterisk CLI)",
+      "ok": true,
+      "detail": {
+        "inboundBytes": 2880,
+        "outboundBytes": 2880,
+        "source": "browser-webrtc",
+        "rx": 49,
+        "tx": 49
+      }
+    },
+    {
+      "name": "call-1-agent-hangup: browser hangup ended the session",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "call-1-agent-hangup: bridge destroyed",
+      "ok": true,
+      "detail": 404
+    },
+    {
+      "name": "call-1-agent-hangup: caller channel destroyed",
+      "ok": true,
+      "detail": 404
+    },
+    {
+      "name": "call-1-agent-hangup: SIPp caller completed",
+      "ok": true,
+      "detail": {
+        "code": 0,
+        "tail": "  Failed call            |        0                  |        0                 \r | -------------------------+---------------------------+--------------------------\r |   Response Time 1        | 00:00:00:000000           | 00:00:00:043000          \r |   Call Length            | 00:00:00:000000           | 00:00:07:411000          \r | ------------------------------ Test Terminated --------------------------------\r | \r |  | "
+      }
+    },
+    {
+      "name": "call-2-caller-hangup: all three agents ring",
+      "ok": true,
+      "detail": "A,B,C"
+    },
+    {
+      "name": "call-2-caller-hangup: inbound session created for DID +255699920003",
+      "ok": true,
+      "detail": "ari-1794392932.18"
+    },
+    {
+      "name": "call-2-caller-hangup: winning agent UI is connected",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "call-2-caller-hangup: agent B stopped ringing",
+      "ok": true,
+      "detail": "B"
+    },
+    {
+      "name": "call-2-caller-hangup: agent C stopped ringing",
+      "ok": true,
+      "detail": "C"
+    },
+    {
+      "name": "call status is connected",
+      "ok": true,
+      "detail": "connected"
+    },
+    {
+      "name": "media verified timestamp recorded",
+      "ok": true,
+      "detail": "2026-11-11T10:28:58.600Z"
+    },
+    {
+      "name": "browser reported inbound RTP bytes",
+      "ok": true,
+      "detail": 2720
+    },
+    {
+      "name": "browser reported outbound RTP bytes",
+      "ok": true,
+      "detail": 2720
+    },
+    {
+      "name": "gateway bridge id assigned",
+      "ok": true,
+      "detail": "mpange-bridge-66dc7dbf26f670eb236fe02d"
+    },
+    {
+      "name": "caller channel id assigned",
+      "ok": true,
+      "detail": "1794392932.18"
+    },
+    {
+      "name": "agent channel id assigned",
+      "ok": true,
+      "detail": "mpange-agent-6f16a9696c915e488b2f4e7e"
+    },
+    {
+      "name": "ARI bridge contains caller and agent channels",
+      "ok": true,
+      "detail": [
+        "1794392932.18",
+        "mpange-agent-6f16a9696c915e488b2f4e7e"
+      ]
+    },
+    {
+      "name": "Asterisk CLI reports bidirectional RTP on the agent channel",
+      "ok": true,
+      "detail": {
+        "rx": 45,
+        "tx": 45,
+        "channel": "mpange_c10a5d66ab8",
+        "codec": "ulaw"
+      }
+    },
+    {
+      "name": "call-2-caller-hangup: verified two-way media (browser RTP + Asterisk CLI)",
+      "ok": true,
+      "detail": {
+        "inboundBytes": 2720,
+        "outboundBytes": 2720,
+        "source": "browser-webrtc",
+        "rx": 45,
+        "tx": 45
+      }
+    },
+    {
+      "name": "call-2-caller-hangup: caller BYE ended the session",
+      "ok": true,
+      "detail": "ended"
+    },
+    {
+      "name": "call-2-caller-hangup: caller channel destroyed",
+      "ok": true,
+      "detail": 404
+    },
+    {
+      "name": "call-2-caller-hangup: winning agent UI released",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "call-2-caller-hangup: SIPp caller completed",
+      "ok": true,
+      "detail": {
+        "code": 0,
+        "tail": "  Failed call            |        0                  |        0                 \r | -------------------------+---------------------------+--------------------------\r |   Response Time 1        | 00:00:00:000000           | 00:00:00:114000          \r |   Call Length            | 00:00:00:000000           | 00:00:45:119000          \r | ------------------------------ Test Terminated --------------------------------\r | \r |  | "
+      }
+    }
+  ],
+  "calls": [
+    {
+      "label": "call-1-agent-hangup",
+      "hangupFrom": "agent",
+      "sessionId": "ari-1794392924.16",
+      "detail": {
+        "evidence": {
+          "source": "browser-webrtc",
+          "inboundBytes": 2880,
+          "outboundBytes": 2880,
+          "inboundPackets": 18,
+          "outboundPackets": 18,
+          "rxPackets": 6,
+          "txPackets": 5,
+          "connectionState": "connected",
+          "audioLevel": 0.03210547196874905,
+          "capturedAt": "2026-11-11T10:28:51.229Z",
+          "transportEstablished": true,
+          "audibleAudioVerified": false
+        },
+        "cli": {
+          "rx": 49,
+          "tx": 49,
+          "channel": "mpange_c10a5d66ab8",
+          "codec": "ulaw"
+        }
+      }
+    },
+    {
+      "label": "call-2-caller-hangup",
+      "hangupFrom": "caller",
+      "sessionId": "ari-1794392932.18",
+      "detail": {
+        "evidence": {
+          "source": "browser-webrtc",
+          "inboundBytes": 2720,
+          "outboundBytes": 2720,
+          "inboundPackets": 17,
+          "outboundPackets": 17,
+          "rxPackets": 2,
+          "txPackets": 2,
+          "connectionState": "connected",
+          "audioLevel": 0.03210547196874905,
+          "capturedAt": "2026-11-11T10:28:58.600Z",
+          "transportEstablished": true,
+          "audibleAudioVerified": false
+        },
+        "cli": {
+          "rx": 45,
+          "tx": 45,
+          "channel": "mpange_c10a5d66ab8",
+          "codec": "ulaw"
+        }
+      }
+    }
+  ],
+  "finishedAt": "2026-11-11T10:29:38.097Z",
+  "passed": 46,
+  "failed": 0
+}

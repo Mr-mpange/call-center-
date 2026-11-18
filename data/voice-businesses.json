@@ -1,0 +1,18 @@
+[
+  {
+    "id": "tenant-aea92be7-6773-4860-919b-af77642fd651",
+    "name": "Said Kilindo's workspace",
+    "numbers": [
+      "+255699920003"
+    ],
+    "routing": "parallel",
+    "agents": [
+      {
+        "id": "user-4470b82f-bda2-4164-a2e4-8a2300a8903e",
+        "name": "Test Agent",
+        "type": "web",
+        "clientName": "mpange-tenant-aea92be7-6773-4860-919b-af77642fd651-15bc4385a27b"
+      }
+    ]
+  }
+]

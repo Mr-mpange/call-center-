@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -93,23 +94,23 @@ router.post('/send', async (req, res) => {
 // AT will POST events such as inbound messages, delivery reports, etc.
 router.post('/webhook', async (req, res) => {
   try {
-    // Optional: verify signature if AT provides one (e.g., via X-Signature header and shared secret)
-    const signature = req.get('x-signature');
-    if (process.env.AT_WHATSAPP_WEBHOOK_SECRET && signature) {
-      // TODO: implement signature verification based on AT's WhatsApp docs
-      // Keep as a placeholder to not block development
+    const secret = process.env.AT_WHATSAPP_WEBHOOK_SECRET;
+    if (secret) {
+      const supplied = String(req.get('x-signature') || '').replace(/^sha256=/i, '');
+      const expected = crypto.createHmac('sha256', secret).update(JSON.stringify(req.body || {})).digest('hex');
+      const suppliedBuffer = Buffer.from(supplied, 'utf8');
+      const expectedBuffer = Buffer.from(expected, 'utf8');
+      if (!supplied || suppliedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)) {
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
     }
 
     const event = req.body || {};
-    console.log('[WhatsApp][Webhook] event', JSON.stringify(event));
-
-    // Example: auto-ack by replying via SMS or WhatsApp
-    // For now, just 200 OK quickly to acknowledge receipt
-    return res.status(200).send('OK');
+    console.log('[WhatsApp][Webhook] accepted', { requestId: req.requestId, eventKeys: Object.keys(event) });
+    return res.status(202).json({ ok: true, accepted: true, requestId: req.requestId });
   } catch (err) {
     console.error('[WhatsApp][Webhook] error', err.message);
-    // Still 200 OK to avoid retries storms during development
-    return res.status(200).send('OK');
+    return res.status(400).json({ error: 'Invalid webhook payload' });
   }
 });
 
