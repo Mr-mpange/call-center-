@@ -1,0 +1,1 @@
+- Printing: mark screen-only UI with `data-print-hide` (print-only with `data-print-only`); DataTable prints all filtered rows on beforeprint. Why: reports print cleanly without per-page print layouts.

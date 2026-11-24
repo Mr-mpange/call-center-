@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Asterisk WebRTC smoke test</title>
+    <style>
+      body {
+        font:
+          16px system-ui,
+          sans-serif;
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        background: #e8edf3;
+        color: #1e293b;
+      }
+      main {
+        background: #e8edf3;
+        border-radius: 24px;
+        padding: 1.5rem;
+        box-shadow:
+          8px 8px 18px #c8d0da,
+          -8px -8px 18px #fff;
+      }
+      label {
+        display: block;
+        margin: 1rem 0 0.25rem;
+        font-size: 0.9rem;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.65rem;
+        border: 0;
+        border-radius: 10px;
+        background: #e8edf3;
+        box-shadow:
+          inset 3px 3px 7px #c8d0da,
+          inset -3px -3px 7px #fff;
+      }
+      button {
+        margin: 1rem 0.5rem 0 0;
+        padding: 0.7rem 1rem;
+        border: 0;
+        border-radius: 12px;
+        background: #e8edf3;
+        box-shadow:
+          4px 4px 9px #c8d0da,
+          -4px -4px 9px #fff;
+        cursor: pointer;
+      }
+      #status {
+        min-height: 1.5em;
+        margin-top: 1rem;
+        color: #007f78;
+      }
+      small {
+        color: #5b6675;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Local Asterisk WebRTC smoke test</h1>
+      <p>
+        Development-only test page. Never enter production or Africa's Talking credentials here.
+      </p>
+      <label for="server">Asterisk WSS URL</label>
+      <input id="server" value="wss://localhost:8089/ws" />
+      <label for="aor">SIP address of record</label>
+      <input id="aor" value="sip:local_agent@localhost" />
+      <label for="username">Local test username</label>
+      <input id="username" value="local_agent" autocomplete="username" />
+      <label for="password">Local test password (from infrastructure/asterisk/.env)</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <button id="connect">Connect and register</button>
+      <button id="echo" disabled>Call Echo (5551000)</button>
+      <button id="hangup" disabled>Hang up</button>
+      <p id="status" role="status" aria-live="polite">Not connected</p>
+      <small
+        >For an incoming SIP-to-browser call, run the documented `sipp-to-browser` profile after
+        registering.</small
+      >
+      <audio id="remote-audio" autoplay playsinline></audio>
+    </main>
+    <script type="module" src="/src/dev/asterisk-smoke.ts"></script>
+  </body>
+</html>
