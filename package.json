@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test test/nileagi.test.js test/nileagi.voice.test.js test/voice-call-history.test.js test/inbound-voice-routing.test.js test/inbound-voice-http.test.js test/media-bridge.test.js test/asterisk-ari-controller.test.js test/ari-client.test.js test/sip-identity.test.js test/asterisk-cli.test.js",
+    "test": "node --test test/call-summary.test.js test/nileagi.test.js test/nileagi.voice.test.js test/voice-call-history.test.js test/inbound-voice-routing.test.js test/inbound-voice-http.test.js test/media-bridge.test.js test/asterisk-ari-controller.test.js test/ari-client.test.js test/sip-identity.test.js test/asterisk-cli.test.js",
     "test:nileagi:live": "node --test test/nileagi.live.test.js"
   },
   "keywords": [

@@ -9,7 +9,11 @@ function clientNameFor(tenantId, email) {
 
 function agentBelongsToUser(agent, user, tenantId) {
   const email = String(user.email || '').toLowerCase();
-  return String(agent.userId || '') === String(user.id || '') ||
+  // Legacy business records used the agent's `id` field for the dashboard
+  // user's id, while newer records store it explicitly as `userId`. Accept
+  // both representations so existing browser-agent memberships continue to
+  // authorize SIP credentials and the realtime stream.
+  return String(agent.userId || agent.id || '') === String(user.id || '') ||
     String(agent.email || '').toLowerCase() === email ||
     String(agent.clientName || '') === clientNameFor(tenantId, email);
 }

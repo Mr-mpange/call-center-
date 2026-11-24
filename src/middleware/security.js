@@ -34,7 +34,11 @@ function rateLimit({ windowMs = 60_000, max = 120, name = 'default', key = (req)
     res.setHeader('RateLimit-Limit', max);
     res.setHeader('RateLimit-Remaining', Math.max(0, max - bucket.count));
     res.setHeader('RateLimit-Reset', Math.ceil(bucket.resetAt / 1000));
-    if (bucket.count > max) return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: Math.ceil((bucket.resetAt - now) / 1000) });
+    if (bucket.count > max) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader('Retry-After', retryAfterSeconds);
+      return res.status(429).json({ error: 'Too many requests', retryAfterSeconds });
+    }
     return next();
   };
 }

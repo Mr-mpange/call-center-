@@ -54,6 +54,13 @@ test('presence excludes offline, inactive, busy, and other-tenant agents', () =>
   inactive.dispose();
 });
 
+test('legacy business agent ids authorize the matching browser user', () => {
+  const tenantId = 'legacy-membership-tenant';
+  const user = { id: 'legacy-user', email: 'legacy@test.invalid', role: 'Agent', status: 'active' };
+  const business = { id: 'legacy-business', agents: [{ id: user.id, type: 'web' }] };
+  assert.deepEqual(routing.membershipsForUser(user, tenantId, [business]), [business.id]);
+});
+
 test('no available agents yields an empty fan-out and an inbound offer can be rejected', () => {
   const tenantId = 'no-agents-tenant';
   store.ensureTenant(tenantId);

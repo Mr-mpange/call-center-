@@ -56,7 +56,10 @@ async function request(name, path, payload, method = 'post') {
 }
 
 async function geminiGenerate(prompt) {
-  return geminiGenerateParts([{ text: String(prompt || '').slice(0, 30_000) }]);
+  // Do not truncate conversation prompts here. Summary callers are responsible
+  // for supplying the complete transcript; Gemini's context window is the
+  // correct boundary, not an arbitrary character slice in the provider shim.
+  return geminiGenerateParts([{ text: String(prompt || '') }]);
 }
 
 async function geminiGenerateParts(parts) {
@@ -70,7 +73,7 @@ async function geminiGenerateParts(parts) {
   const model = String(process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
   const response = await axios.post(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    { contents: [{ parts }] },
+    { contents: [{ parts }], generationConfig: { temperature: 0.2, maxOutputTokens: 4096 } },
     { timeout: 30_000, headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, validateStatus: (value) => value >= 200 && value < 300 },
   );
   return response.data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('')?.trim() || '';
@@ -80,7 +83,7 @@ async function geminiTranscribe(audio, mimeType = 'audio/wav') {
   const data = Buffer.isBuffer(audio) ? audio.toString('base64') : Buffer.from(audio).toString('base64');
   return geminiGenerateParts([
     { inlineData: { mimeType: String(mimeType || 'audio/wav'), data } },
-    { text: 'Transcribe this customer-service call. Return only the transcript as plain text. Put each speaker turn on a new line and prefix each line with CUSTOMER: or AGENT: when the speaker can be identified. Do not invent words.' },
+    { text: 'Transcribe this customer-service call. Return only plain text, one speaker turn per line. Prefix each line with CUSTOMER or AGENT, then [LANGUAGE=English], [LANGUAGE=Kiswahili], or [LANGUAGE=Mixed], followed by a colon. Detect the language of each turn; do not translate it. Preserve names, amounts, currency wording, reference numbers, dates, and East African Swahili time expressions exactly. Do not invent words.' },
   ]);
 }
 

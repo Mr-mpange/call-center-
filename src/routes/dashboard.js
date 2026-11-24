@@ -11,6 +11,7 @@ const mediaBridge = require('../services/mediaBridge').mediaBridge;
 const { getMediaBridgeAdapter } = require('../services/mediaBridge');
 const mediaGateway = require('../services/mediaGateway');
 const sipIdentityStore = require('../services/sipIdentityStore');
+const { EMPTY_SUMMARY, inferLanguageHint, generateValidatedSummary } = require('../services/callSummary');
 
 const router = express.Router();
 
@@ -103,22 +104,42 @@ function now() {
   return new Date().toISOString();
 }
 
-function parseGeminiSummary(text) {
-  const empty = { reason: 'Not established.', discussion: [], resolution: 'Not established.', unresolved: [], nextSteps: [], suggestions: [] };
-  const candidate = String(text || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  try {
-    const parsed = JSON.parse(candidate);
-    return {
-      reason: String(parsed.reason || empty.reason),
-      discussion: Array.isArray(parsed.discussion) ? parsed.discussion.map(String) : [],
-      resolution: String(parsed.resolution || empty.resolution),
-      unresolved: Array.isArray(parsed.unresolved) ? parsed.unresolved.map(String) : [],
-      nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps.map(String) : [],
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.map(String) : [],
-    };
-  } catch {
-    return { ...empty, reason: candidate || empty.reason };
-  }
+function tenantLocalization(store, req) {
+  const company = store.settings?.company && typeof store.settings.company === 'object' ? store.settings.company : {};
+  const platformLocale = store.platform?.configuration?.locale && typeof store.platform.configuration.locale === 'object' ? store.platform.configuration.locale : {};
+  const user = currentUser(req, store);
+  return {
+    country: company.country || platformLocale.defaultCountry || null,
+    timezone: company.timezone || platformLocale.defaultTimezone || null,
+    defaultCurrency: company.defaultCurrency || company.currency || null,
+    preferredLanguage: user?.preferredLanguage || company.defaultLanguage || company.language || null,
+    agentLanguage: user?.preferredLanguage || null,
+    organizationLanguage: company.defaultLanguage || company.language || null,
+    dateFormat: company.dateFormat || null,
+  };
+}
+
+function resolveSummaryLanguage(requested, localization) {
+  const value = String(requested || 'auto').trim().toLowerCase();
+  if (value === 'organization-default' || value === 'organization') return localization.organizationLanguage || 'auto';
+  if (value === 'agent-preference' || value === 'agent') return localization.agentLanguage || localization.organizationLanguage || 'auto';
+  return requested || 'auto';
+}
+
+function parseGeminiTranscription(text, callId) {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const segments = (lines.length ? lines : ['']).map((line, index) => {
+    const labeled = line.match(/^(CUSTOMER|AGENT)\s*(?:\[LANGUAGE=([^\]]+)\])?\s*:\s*(.*)$/i);
+    const language = String(labeled?.[2] || '').trim() || 'unknown';
+    return { id: `${callId}-segment-${index + 1}`, speaker: labeled?.[1]?.toLowerCase() === 'agent' ? 'agent' : 'customer', atSec: 0, text: labeled?.[3] || line, language, confidence: null };
+  }).filter((segment) => segment.text);
+  const languages = segments.map((segment) => segment.language).filter((language) => language !== 'unknown');
+  const language = languages.length && languages.every((item) => item.toLowerCase().includes('swah'))
+    ? 'Kiswahili'
+    : languages.length && languages.every((item) => item.toLowerCase().includes('english'))
+      ? 'English'
+      : languages.length ? 'Mixed' : 'unknown';
+  return { segments, language };
 }
 
 function normalizeVoiceNumber(value) {
@@ -169,7 +190,7 @@ function callArtifactsFor(store, call, tenantId = 'workspace') {
   const geminiReady = providers.status('gemini').configured;
   const recording = { status: sourceProviderReady ? recordingSource.status : 'unavailable', source: recordingSource ? 'backend' : 'not-configured', url: recordingSource?.sourceUrl || null, sourceUrl: recordingSource?.sourceUrl || null, storageKey: recordingSource?.storageKey || null, mimeType: recordingSource?.mimeType || null, message: recordingSource && !sourceProviderReady ? 'A recording source exists, but its protected media URL is not available.' : recordingSource ? '' : 'No recording source is attached to this call.', durationSec: recordingSource?.durationSec ?? (Number(call.durationSec) || 0), updatedAt: now(), ...(saved.recording || {}) };
   const transcription = { status: 'unavailable', source: geminiReady ? 'gemini' : 'not-configured', language: 'Not established', segments: [], message: geminiReady ? (recordingSource?.sourceUrl ? 'Gemini transcription is ready to process this recording.' : 'Attach a recording source URL before starting Gemini transcription.') : 'Transcription service is not configured for this organization.', updatedAt: now(), ...(saved.transcription || {}) };
-  const summarization = { status: 'unavailable', source: geminiReady ? 'gemini' : 'not-configured', summary: { reason: 'Not established.', discussion: [], resolution: 'Not established.', unresolved: [], nextSteps: [], suggestions: [] }, message: geminiReady ? 'Gemini summary has not been generated yet.' : 'No summarization provider is configured.', updatedAt: now(), ...(saved.summarization || {}) };
+  const summarization = { status: 'unavailable', source: geminiReady ? 'gemini' : 'not-configured', summary: { ...EMPTY_SUMMARY }, message: geminiReady ? 'Gemini summary has not been generated yet.' : 'No summarization provider is configured.', updatedAt: now(), ...(saved.summarization || {}) };
   // Artifacts saved before Gemini was configured must not permanently hide the
   // now-available Gemini actions behind the old not-configured state.
   if (geminiReady && transcription.status === 'unavailable') Object.assign(transcription, { source: 'gemini', message: recordingSource?.sourceUrl ? 'Gemini transcription is ready to process this recording.' : 'Attach a recording source URL before starting Gemini transcription.' });
@@ -1146,15 +1167,11 @@ router.post('/calls/:callId/transcription-jobs', maybeRequireAuth, (req, res) =>
     return axios.get(recordingSource.sourceUrl, { responseType: 'arraybuffer', timeout: 30_000 })
       .then((audio) => providers.geminiTranscribe(audio.data, recordingSource.mimeType || audio.headers['content-type'] || 'audio/wav'))
       .then((text) => {
-        const lines = String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-        const segments = (lines.length ? lines : ['']).map((line, index) => {
-          const labeled = line.match(/^(CUSTOMER|AGENT)\s*:\s*(.*)$/i);
-          return { id: `${call.id}-segment-${index + 1}`, speaker: labeled?.[1]?.toLowerCase() === 'agent' ? 'agent' : 'customer', atSec: 0, text: labeled?.[2] || line, language: 'English', confidence: null };
-        }).filter((segment) => segment.text);
+        const transcription = parseGeminiTranscription(text, call.id);
         const next = dashboardStore.read(req.tenantId);
-        next.callArtifacts[call.id] = { ...(next.callArtifacts[call.id] || {}), transcription: { status: 'ready', source: 'gemini', provider: 'Gemini', language: 'English', segments, updatedAt: now() } };
+        next.callArtifacts[call.id] = { ...(next.callArtifacts[call.id] || {}), transcription: { status: 'ready', source: 'gemini', provider: 'Gemini', language: transcription.language, segments: transcription.segments, updatedAt: now() } };
         dashboardStore.write(next, req.tenantId);
-        return res.json({ ok: true, status: 'ready', provider: 'gemini', segments });
+        return res.json({ ok: true, status: 'ready', provider: 'gemini', segments: transcription.segments });
       })
       .catch((error) => res.status(error.response?.status || error.statusCode || 502).json({ error: 'Gemini transcription request failed' }));
   }
@@ -1174,11 +1191,15 @@ router.post('/calls/:callId/summary-jobs', maybeRequireAuth, (req, res) => {
   if (!call) return res.status(404).json({ error: 'Call not found' });
   if (providers.status('gemini').configured) {
     const transcript = store.callArtifacts?.[call.id]?.transcription?.segments || [];
-    const prompt = `You summarize a customer-service call. Return only valid JSON with exactly these keys: reason (string), discussion (array of strings), resolution (string), unresolved (array of strings), nextSteps (array of strings), suggestions (array of strings). Do not invent facts; use "Not established." when unavailable.\n\nCall metadata: ${JSON.stringify({ caller: call.caller, phone: call.phone, direction: call.direction, queue: call.queue, agent: call.agent, outcome: call.outcome, summary: call.summary })}\nTranscript: ${JSON.stringify(transcript)}`;
-    return providers.geminiGenerate(prompt)
-      .then((text) => {
+    if (!transcript.length) return res.status(400).json({ error: 'A complete transcript is required before generating an AI summary' });
+    const localization = tenantLocalization(store, req);
+    const detectedLanguage = inferLanguageHint(transcript);
+    const languageHint = detectedLanguage === 'auto'
+      ? resolveSummaryLanguage(req.body?.languageHint || 'auto', localization)
+      : detectedLanguage;
+    return generateValidatedSummary({ call, transcript, languageHint, localization, generate: providers.geminiGenerate })
+      .then((summary) => {
         const next = dashboardStore.read(req.tenantId);
-        const summary = parseGeminiSummary(text);
         const existingArtifact = next.callArtifacts[call.id] || {};
         const existingTasks = Array.isArray(existingArtifact.tasks) ? existingArtifact.tasks : [];
         const suggestedTasks = summary.suggestions.map((title, index) => ({
@@ -1205,6 +1226,53 @@ router.post('/calls/:callId/summary-jobs', maybeRequireAuth, (req, res) => {
       return res.status(202).json({ ok: true, status: 'queued', provider: result });
     })
     .catch((error) => res.status(error.statusCode || error.response?.status || 502).json({ error: error.statusCode === 503 ? error.message : 'Summary provider request failed' }));
+});
+
+// Temporary, non-persistent summary playground for local demos. It accepts
+// pasted transcript text, calls Gemini, and deliberately does not write the
+// transcript, audio, or generated summary to the tenant database.
+router.post('/calls/:callId/summary-preview', maybeRequireAuth, (req, res) => {
+  const store = dashboardStore.read();
+  const call = store.history.find((item) => item.id === req.params.callId);
+  if (!call) return res.status(404).json({ error: 'Call not found' });
+  if (!providers.status('gemini').configured) return res.status(503).json({ error: 'Gemini provider is not configured', provider: providers.status('gemini') });
+  const transcript = String(req.body?.transcript || '').trim();
+  if (!transcript) return res.status(400).json({ error: 'Paste transcript text before generating a summary' });
+  const localization = tenantLocalization(store, req);
+  const languageHint = resolveSummaryLanguage(req.body?.languageHint || 'auto', localization);
+  return generateValidatedSummary({ call, transcript, languageHint, localization, generate: providers.geminiGenerate })
+    .then((summary) => res.json({ ok: true, provider: 'gemini', summary }))
+    .catch((error) => {
+      const providerMessage = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+      return res.status(error.response?.status || error.statusCode || 502).json({ error: `Gemini summarization request failed: ${String(providerMessage || 'provider unavailable').slice(0, 300)}` });
+    });
+});
+
+// Temporary audio playground. The request body is held in memory only; this
+// endpoint intentionally does not create a recording source or persist any
+// transcript, summary, or audio artifact.
+router.post('/calls/:callId/summary-preview-audio', maybeRequireAuth, async (req, res) => {
+  const store = dashboardStore.read();
+  const call = store.history.find((item) => item.id === req.params.callId);
+  if (!call) return res.status(404).json({ error: 'Call not found' });
+  if (!providers.status('gemini').configured) return res.status(503).json({ error: 'Gemini provider is not configured', provider: providers.status('gemini') });
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: 'Attach an audio file before generating a summary' });
+  try {
+    const rawTranscript = await providers.geminiTranscribe(req.body, req.get('content-type') || 'audio/wav');
+    const transcription = parseGeminiTranscription(rawTranscript, `${call.id}-preview`);
+    if (!transcription.segments.length) return res.status(422).json({ error: 'Gemini did not return a usable transcript' });
+    const localization = tenantLocalization(store, req);
+    const languageHint = resolveSummaryLanguage(req.query?.languageHint || 'auto', localization);
+    const summary = await generateValidatedSummary({ call, transcript: transcription.segments, languageHint, localization, generate: providers.geminiGenerate });
+    return res.json({ ok: true, provider: 'gemini', persisted: false, transcription: { language: transcription.language, segments: transcription.segments }, summary });
+  } catch (error) {
+    const providerMessage = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+    return res.status(error.response?.status || error.statusCode || 502).json({ error: `Gemini audio summary failed: ${String(providerMessage || 'provider unavailable').slice(0, 300)}` });
+  } finally {
+    // req.body is the temporary in-memory buffer. Drop the reference after the
+    // request completes so it can be reclaimed; nothing was persisted.
+    req.body = null;
+  }
 });
 
 router.patch('/calls/:callId/transcript/:segmentId', maybeRequireAuth, (req, res) => {
